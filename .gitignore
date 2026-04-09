@@ -1,0 +1,17 @@
+# Environment
+.env
+
+# Operational logs (not shared)
+.widget-control/logs/*
+!.widget-control/logs/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

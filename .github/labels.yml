@@ -1,0 +1,15 @@
+- name: widget-review
+  color: "fbca04"
+  description: "Widget submitted for code review before ThingsBoard import"
+
+- name: approved
+  color: "0e8a16"
+  description: "Widget approved for ThingsBoard import"
+
+- name: changes-requested
+  color: "e11d48"
+  description: "Widget needs changes before approval"
+
+- name: imported
+  color: "6f42c1"
+  description: "Widget successfully imported to ThingsBoard"

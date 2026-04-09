@@ -1,0 +1,12 @@
+{
+  "git_provider": "github",
+  "repo": "ValleyRoadLabs/Widgets",
+  "base_branch": "main",
+  "reviewers": [],
+  "widget_dir": "widgets",
+  "manifest_filename": "manifest.json",
+  "thingsboard": {
+    "base_url": "",
+    "auth_token_env": "TB_AUTH_TOKEN"
+  }
+}
