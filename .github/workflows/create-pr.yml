@@ -1,0 +1,154 @@
+name: Auto-Create PR
+
+on:
+  push:
+    branches:
+      - 'widget/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pushed branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Detect widgets in this branch
+        id: detect
+        run: |
+          # Find which widget folders have changes vs main
+          WIDGETS=$(git diff --name-only origin/main...HEAD -- widgets/ | cut -d/ -f2 | sort -u | tr '\n' ',')
+          WIDGETS=${WIDGETS%,}
+          echo "widgets=$WIDGETS" >> "$GITHUB_OUTPUT"
+          echo "Detected widgets: $WIDGETS"
+
+      - name: Create Pull Request
+        id: create-pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          WIDGETS="${{ steps.detect.outputs.widgets }}"
+
+          # Build PR body
+          WIDGET_LIST=""
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+          for slug in "${SLUGS[@]}"; do
+            WIDGET_LIST="${WIDGET_LIST}- \`${slug}\`"$'\n'
+          done
+
+          TITLE="widget: ${WIDGETS} review"
+          if [[ "$WIDGETS" == *","* ]]; then
+            COUNT=$(echo "$WIDGETS" | tr ',' '\n' | wc -l)
+            TITLE="widget: batch review (${COUNT} widgets)"
+          fi
+
+          BODY=$(cat <<EOF
+          ## Widget Review
+
+          **Widgets in this PR:**
+          ${WIDGET_LIST}
+          ### Review Checklist
+          - [ ] HTML reviewed
+          - [ ] CSS reviewed — no global style leaks
+          - [ ] JavaScript reviewed — no security concerns
+          - [ ] Settings schema valid
+          - [ ] Tested in widget preview
+          - [ ] manifest.json version is correct
+
+          ### Notes
+          <!-- any context for reviewers -->
+          EOF
+          )
+
+          PR_URL=$(gh pr create \
+            --title "$TITLE" \
+            --body "$BODY" \
+            --base main \
+            --head "$BRANCH" \
+            --label "widget-review" 2>&1) || true
+
+          if [[ "$PR_URL" == *"already exists"* ]]; then
+            echo "PR already exists for this branch"
+            PR_URL=$(gh pr view "$BRANCH" --json url -q '.url')
+          fi
+
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number -q '.number')
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Created PR #$PR_NUMBER: $PR_URL"
+
+      - name: Update manifests and tracking on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ steps.create-pr.outputs.pr_number }}"
+          PR_URL="${{ steps.create-pr.outputs.pr_url }}"
+          WIDGETS="${{ steps.detect.outputs.widgets }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT="${{ github.sha }}"
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Switch to main to update state files
+          git checkout main
+          git pull origin main
+
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+          SLUG_JSON="["
+          for i in "${!SLUGS[@]}"; do
+            slug="${SLUGS[$i]}"
+            MANIFEST="widgets/${slug}/manifest.json"
+
+            if [ -f "$MANIFEST" ]; then
+              # Update manifest control block
+              TMP=$(mktemp)
+              python3 -c "
+          import json, sys
+          with open('$MANIFEST') as f:
+              m = json.load(f)
+          m['control']['status'] = 'in_review'
+          m['control']['last_pushed_at'] = '$NOW'
+          m['control']['last_pushed_commit'] = '$COMMIT'
+          m['control']['pr_number'] = $PR_NUMBER
+          m['control']['pr_url'] = '$PR_URL'
+          with open('$MANIFEST', 'w') as f:
+              json.dump(m, f, indent=2)
+              f.write('\n')
+          "
+            fi
+
+            if [ $i -gt 0 ]; then SLUG_JSON+=","; fi
+            SLUG_JSON+="\"${slug}\""
+          done
+          SLUG_JSON+="]"
+
+          # Update pending-prs.json
+          PENDING=".widget-control/pending-prs.json"
+          python3 -c "
+          import json
+          with open('$PENDING') as f:
+              data = json.load(f)
+          entry = {
+              'number': $PR_NUMBER,
+              'url': '$PR_URL',
+              'branch': '$BRANCH',
+              'widgets': $SLUG_JSON,
+              'created_at': '$NOW',
+              'status': 'in_review'
+          }
+          data['prs'] = [p for p in data['prs'] if p.get('number') != $PR_NUMBER]
+          data['prs'].insert(0, entry)
+          with open('$PENDING', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+
+          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git commit -m "chore(actions): update manifests for PR #${PR_NUMBER}" || echo "Nothing to commit"
+          git push origin main

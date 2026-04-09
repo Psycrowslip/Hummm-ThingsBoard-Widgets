@@ -1,0 +1,120 @@
+name: Sync PR Review Status
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  sync-status:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.pull_request.head.ref, 'widget/')
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Determine new status
+        id: status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_STATE="${{ github.event.pull_request.state }}"
+          PR_MERGED="${{ github.event.pull_request.merged }}"
+
+          STATUS="in_review"
+
+          if [ "$PR_STATE" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
+            STATUS="approved"
+          elif [ "$PR_STATE" = "closed" ]; then
+            STATUS="closed"
+          else
+            # Check reviews
+            REVIEWS=$(gh pr view "$PR_NUMBER" --json reviews -q '.reviews[] | .state')
+            APPROVED=$(echo "$REVIEWS" | grep -c "APPROVED" || true)
+            CHANGES_REQ=$(echo "$REVIEWS" | grep -c "CHANGES_REQUESTED" || true)
+
+            if [ "$CHANGES_REQ" -gt 0 ]; then
+              STATUS="changes_requested"
+            elif [ "$APPROVED" -gt 0 ]; then
+              STATUS="approved"
+            fi
+
+            # Get counts for tracking
+            TOTAL=$(echo "$REVIEWS" | sort -u | wc -l || echo "0")
+            echo "approvals=$APPROVED" >> "$GITHUB_OUTPUT"
+            echo "total_reviewers=$TOTAL" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "Determined status: $STATUS"
+
+      - name: Detect widgets from PR
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          WIDGETS=$(gh pr diff "$PR_NUMBER" --name-only | grep "^widgets/" | cut -d/ -f2 | sort -u | tr '\n' ',')
+          WIDGETS=${WIDGETS%,}
+          echo "widgets=$WIDGETS" >> "$GITHUB_OUTPUT"
+          echo "Detected widgets: $WIDGETS"
+
+      - name: Update manifests and tracking
+        run: |
+          git pull origin main
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          STATUS="${{ steps.status.outputs.status }}"
+          WIDGETS="${{ steps.detect.outputs.widgets }}"
+          APPROVALS="${{ steps.status.outputs.approvals }}"
+          TOTAL="${{ steps.status.outputs.total_reviewers }}"
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+          for slug in "${SLUGS[@]}"; do
+            MANIFEST="widgets/${slug}/manifest.json"
+            if [ -f "$MANIFEST" ]; then
+              python3 -c "
+          import json
+          with open('$MANIFEST') as f:
+              m = json.load(f)
+          m['control']['status'] = '$STATUS'
+          if '$STATUS' == 'approved':
+              m['control']['approved_at'] = '$NOW'
+          with open('$MANIFEST', 'w') as f:
+              json.dump(m, f, indent=2)
+              f.write('\n')
+          "
+            fi
+          done
+
+          # Update pending-prs.json
+          python3 -c "
+          import json
+          with open('.widget-control/pending-prs.json') as f:
+              data = json.load(f)
+          for pr in data['prs']:
+              if pr.get('number') == $PR_NUMBER:
+                  pr['status'] = '$STATUS'
+                  pr['updated_at'] = '$NOW'
+                  pr['approvals'] = int('${APPROVALS:-0}')
+                  pr['total_reviewers'] = int('${TOTAL:-0}')
+                  break
+          with open('.widget-control/pending-prs.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+
+          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git commit -m "chore(actions): sync status to '$STATUS' for PR #${PR_NUMBER}" || echo "Nothing to commit"
+          git push origin main
