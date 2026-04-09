@@ -1,0 +1,25 @@
+{
+  "name": "Admin Dashboard V1.11",
+  "slug": "admin_dashboard_v1_11",
+  "version": "1.0",
+  "fqn": "admin_dashboard_v1_11",
+  "description": "",
+  "author": "",
+  "created_at": "2026-04-09T14:24:46.548Z",
+  "updated_at": "2026-04-09T14:24:46.548Z",
+  "thingsboard": {
+    "widget_type": "latest",
+    "bundle_alias": "",
+    "is_system": false
+  },
+  "control": {
+    "status": "draft",
+    "last_pushed_at": null,
+    "last_pushed_commit": null,
+    "pr_number": null,
+    "pr_url": null,
+    "approved_at": null,
+    "imported_at": null,
+    "thingsboard_id": "2986e0f0-1c51-11f1-8a7f-ff78ec3da2a6"
+  }
+}
