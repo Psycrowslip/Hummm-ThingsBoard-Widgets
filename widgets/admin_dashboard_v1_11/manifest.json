@@ -5,17 +5,17 @@
   "fqn": "admin_dashboard_v1_11",
   "description": "",
   "author": "",
-  "created_at": "2026-04-09T14:24:46.548Z",
-  "updated_at": "2026-04-09T14:24:46.548Z",
+  "created_at": "2026-04-09T14:36:29.316Z",
+  "updated_at": "2026-04-09T14:36:29.316Z",
   "thingsboard": {
     "widget_type": "latest",
     "bundle_alias": "",
     "is_system": false
   },
   "control": {
-    "status": "pushed",
-    "last_pushed_at": "2026-04-09T14:30:21.616Z",
-    "last_pushed_commit": "d7ac865b2698f9f13b6d82166aa28ed91c4edc67",
+    "status": "draft",
+    "last_pushed_at": null,
+    "last_pushed_commit": null,
     "pr_number": null,
     "pr_url": null,
     "approved_at": null,
