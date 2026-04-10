@@ -33,8 +33,9 @@ jobs:
       - name: Detect changed widgets
         id: detect
         run: |
+          # Detect widget version folders (widgets/BaseName/VersionName/)
           WIDGETS=$(git diff --name-only origin/main...HEAD -- 'widgets/' \
-            | grep -oP 'widgets/\K[^/]+' | sort -u | tr '\n' ',' | sed 's/,$//')
+            | grep -oP 'widgets/\K[^/]+/[^/]+' | sort -u | tr '\n' ',' | sed 's/,$//')
           if [ -z "$WIDGETS" ]; then
             echo "No widget changes detected"
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -148,7 +149,7 @@ jobs:
             '.prs = ([.prs[] | select(.number != $entry.number)] + [$entry])' \
             "$PENDING" > tmp.json && mv tmp.json "$PENDING"
 
-          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git add widgets/*/manifest.json widgets/*/*/manifest.json .widget-control/pending-prs.json
           git commit -m "chore: track PR #${PR_NUMBER} for ${WIDGETS}" || echo "Nothing to commit"
           git push origin main
 
@@ -252,7 +253,7 @@ jobs:
              '(.prs[] | select(.number == $num)) |= (.status = $status | .approvals = $approvals | .total_reviewers = $total | .updated_at = $now)' \
              "$PENDING" > tmp.json && mv tmp.json "$PENDING"
 
-          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git add widgets/*/manifest.json widgets/*/*/manifest.json .widget-control/pending-prs.json
           git commit -m "chore: sync review → ${STATUS} for PR #${PR_NUMBER}" || echo "Nothing to commit"
           git push origin main
 
@@ -313,7 +314,7 @@ jobs:
              '(.prs[] | select(.number == $num)) |= (.status = $status | .updated_at = $now)' \
              "$PENDING" > tmp.json && mv tmp.json "$PENDING"
 
-          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git add widgets/*/manifest.json widgets/*/*/manifest.json .widget-control/pending-prs.json
           git commit -m "chore: PR #${PR_NUMBER} ${STATUS}" || echo "Nothing to commit"
           git push origin main
 
