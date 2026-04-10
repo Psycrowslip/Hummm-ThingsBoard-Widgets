@@ -1,3 +1,17 @@
 {
-  "prs": []
+  "prs": [
+    {
+      "number": 2,
+      "url": "https://github.com/Psycrowslip/Hummm-ThingsBoard-Widgets/pull/2",
+      "branch": "widget/admin_dashboard_v1_11/2026041012370",
+      "widgets": [
+        "admin_dashboard_v1_11"
+      ],
+      "status": "in_review",
+      "approvals": 0,
+      "total_reviewers": 0,
+      "created_at": "2026-04-10T12:37:14Z",
+      "updated_at": "2026-04-10T12:37:14Z"
+    }
+  ]
 }
