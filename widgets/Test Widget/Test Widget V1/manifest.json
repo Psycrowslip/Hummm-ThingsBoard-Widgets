@@ -14,7 +14,7 @@
     "is_system": false
   },
   "control": {
-    "status": "in_review",
+    "status": "merged",
     "last_pushed_at": "2026-04-10T13:06:50.134Z",
     "last_pushed_commit": "f079015a5697630dc7f8d0ed0fd462f262a2dfd8",
     "pr_number": 5,
