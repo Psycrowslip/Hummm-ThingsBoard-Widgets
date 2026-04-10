@@ -8,14 +8,14 @@ function injectCarouselStylesOnce() {
   style.innerHTML = `
     .carousel-root{ position:relative; font-family:system-ui; height:100%; }
     .carousel-controls{
-      position:absolute; top:28px; left:50%; transform:translateX(-50%);
+      position:absolute; top:29px; left:50%; transform:translateX(-50%);
       display:flex; align-items:center; gap:14px; z-index:10;
       background:rgba(255,255,255,1); backdrop-filter:blur(6px);
       padding:6px 14px; border-radius:999px;
       box-shadow:0 6px 18px rgba(0,0,0,0.06);
     }
     .nav{
-      width:30px; height:30px; border-radius:50%; border:none;
+      width:40px; height:40px; border-radius:50%; border:none;
       background:rgba(255,255,255,1); cursor:pointer; position:relative;
       padding:0; transition:transform 150ms ease;
     }
@@ -153,14 +153,14 @@ function injectCarouselStylesOnce() {
     .fw-radar-ring{
       position:absolute; inset:0;
       border:2.5px solid #508590;
-      border-radius:50%;
+      border-radius:51%;
       animation:radarPulse 2.4s ease-out infinite;
     }
     .fw-radar-ring.r2{ animation-delay:0.6s; }
     .fw-radar-ring.r3{ animation-delay:1.2s; }
     @keyframes radarPulse{
       0%  { transform:scale(0.3); opacity:0.85; }
-      70% { opacity:0.25; }
+      70% { opacity:0.24; }
       100%{ transform:scale(1.2); opacity:0; }
     }
     .fw-radar-dot{
