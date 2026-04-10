@@ -1,12 +1,12 @@
 {
-  "name": "Admin Dashboard V1.11",
-  "slug": "admin_dashboard_v1_11",
+  "name": "Data Hub V1.11",
+  "slug": "data_hub_v1_11",
   "version": "1.0",
-  "fqn": "admin_dashboard_v1_11",
+  "fqn": "data_hub_v1_11",
   "description": "",
   "author": "",
-  "created_at": "2026-04-10T05:22:28.139Z",
-  "updated_at": "2026-04-10T05:22:28.139Z",
+  "created_at": "2026-04-10T05:22:28.143Z",
+  "updated_at": "2026-04-10T05:22:28.143Z",
   "thingsboard": {
     "widget_type": "latest",
     "bundle_alias": "",
@@ -20,6 +20,6 @@
     "pr_url": null,
     "approved_at": null,
     "imported_at": null,
-    "thingsboard_id": "2986e0f0-1c51-11f1-8a7f-ff78ec3da2a6"
+    "thingsboard_id": "4bd7f790-1e39-11f1-bffe-bb4f9f21f732"
   }
 }
