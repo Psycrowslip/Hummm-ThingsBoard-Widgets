@@ -7,11 +7,11 @@
       "widgets": [
         "admin_dashboard_v1_11"
       ],
-      "status": "in_review",
+      "status": "merged",
       "approvals": 0,
       "total_reviewers": 0,
       "created_at": "2026-04-10T12:37:14Z",
-      "updated_at": "2026-04-10T12:37:14Z"
+      "updated_at": "2026-04-10T12:39:49Z"
     }
   ]
 }
