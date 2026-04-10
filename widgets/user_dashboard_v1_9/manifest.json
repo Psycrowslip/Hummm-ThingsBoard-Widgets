@@ -1,0 +1,25 @@
+{
+  "name": "User Dashboard V1.9",
+  "slug": "user_dashboard_v1_9",
+  "version": "1.0",
+  "fqn": "user_dashboard_v1_9",
+  "description": "",
+  "author": "",
+  "created_at": "2026-04-10T10:36:27.707Z",
+  "updated_at": "2026-04-10T10:36:27.707Z",
+  "thingsboard": {
+    "widget_type": "latest",
+    "bundle_alias": "",
+    "is_system": false
+  },
+  "control": {
+    "status": "pushed",
+    "last_pushed_at": "2026-04-10T10:36:56.626Z",
+    "last_pushed_commit": "893511090e8ff7537632e8ce70ca4ccf9151250b",
+    "pr_number": null,
+    "pr_url": null,
+    "approved_at": null,
+    "imported_at": null,
+    "thingsboard_id": "c72bd020-1235-11f1-a427-293a00e6af11"
+  }
+}
