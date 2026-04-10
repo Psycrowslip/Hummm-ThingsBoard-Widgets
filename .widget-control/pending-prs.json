@@ -20,11 +20,11 @@
       "widgets": [
         "test_widget_v1"
       ],
-      "status": "in_review",
+      "status": "merged",
       "approvals": 0,
       "total_reviewers": 0,
       "created_at": "2026-04-10T12:45:33Z",
-      "updated_at": "2026-04-10T12:45:33Z"
+      "updated_at": "2026-04-10T12:46:12Z"
     }
   ]
 }
