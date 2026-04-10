@@ -13,9 +13,9 @@
     "is_system": false
   },
   "control": {
-    "status": "draft",
-    "last_pushed_at": null,
-    "last_pushed_commit": null,
+    "status": "pushed",
+    "last_pushed_at": "2026-04-10T05:23:29.186Z",
+    "last_pushed_commit": "58c80f8b648f7f6d27a2e24ce2edfd634adf6a43",
     "pr_number": null,
     "pr_url": null,
     "approved_at": null,
