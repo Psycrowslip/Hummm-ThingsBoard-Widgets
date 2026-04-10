@@ -1,0 +1,326 @@
+name: Widget PR Lifecycle
+
+on:
+  push:
+    branches:
+      - 'widget/**'
+  pull_request:
+    types: [opened, synchronize, closed]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ── Job 1: Auto-create PR on branch push ──────────────────────────
+  create-pr:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pushed branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect changed widgets
+        id: detect
+        run: |
+          WIDGETS=$(git diff --name-only origin/main...HEAD -- 'widgets/' \
+            | grep -oP 'widgets/\K[^/]+' | sort -u | tr '\n' ',' | sed 's/,$//')
+          if [ -z "$WIDGETS" ]; then
+            echo "No widget changes detected"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "widgets=$WIDGETS" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Detected widgets: $WIDGETS"
+          fi
+
+      - name: Create pull request
+        if: steps.detect.outputs.skip != 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          WIDGETS="${{ steps.detect.outputs.widgets }}"
+
+          # Check if PR already exists for this branch
+          EXISTING=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for $BRANCH"
+            echo "pr_number=$EXISTING" >> "$GITHUB_OUTPUT"
+            echo "pr_url=$(gh pr view "$EXISTING" --json url --jq '.url')" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TITLE="feat(widget): ${WIDGETS//,/, }"
+
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+          WIDGET_LIST=""
+          for slug in "${SLUGS[@]}"; do
+            WIDGET_LIST="${WIDGET_LIST}- \`${slug}\`"$'\n'
+          done
+
+          cat > /tmp/pr-body.md <<EOF
+          ## Widget Review
+
+          **Widgets:**
+          ${WIDGET_LIST}
+          ### Checklist
+          - [ ] HTML reviewed
+          - [ ] CSS reviewed — no global style leaks
+          - [ ] JavaScript reviewed — no security concerns
+          - [ ] Settings schema valid
+          - [ ] manifest.json version correct
+          EOF
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' /tmp/pr-body.md
+
+          PR_URL=$(gh pr create \
+            --title "$TITLE" \
+            --body-file /tmp/pr-body.md \
+            --base main \
+            --head "$BRANCH")
+
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number')
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "Created PR #$PR_NUMBER: $PR_URL"
+
+      - name: Update tracking on main
+        if: steps.detect.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          PR_URL="${{ steps.pr.outputs.pr_url }}"
+          WIDGETS="${{ steps.detect.outputs.widgets }}"
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          git checkout main
+          git pull origin main
+
+          mkdir -p .widget-control
+
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+
+          # Build JSON array of widget slugs
+          SLUG_ARRAY=$(printf '%s\n' "${SLUGS[@]}" | jq -R . | jq -s .)
+
+          # Update each widget manifest on main
+          for slug in "${SLUGS[@]}"; do
+            MANIFEST="widgets/${slug}/manifest.json"
+            if [ -f "$MANIFEST" ]; then
+              jq --arg status "in_review" \
+                 --argjson pr_num "$PR_NUMBER" \
+                 --arg pr_url "$PR_URL" \
+                 --arg now "$NOW" \
+                 '.control.status = $status | .control.pr_number = $pr_num | .control.pr_url = $pr_url | .updated_at = $now' \
+                 "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+            fi
+          done
+
+          # Upsert entry in pending-prs.json
+          PENDING=".widget-control/pending-prs.json"
+          [ -f "$PENDING" ] || echo '{"prs":[]}' > "$PENDING"
+
+          PR_ENTRY=$(jq -n \
+            --argjson num "$PR_NUMBER" \
+            --arg url "$PR_URL" \
+            --arg branch "$BRANCH" \
+            --argjson widgets "$SLUG_ARRAY" \
+            --arg status "in_review" \
+            --arg now "$NOW" \
+            '{number: $num, url: $url, branch: $branch, widgets: $widgets, status: $status, approvals: 0, total_reviewers: 0, created_at: $now, updated_at: $now}')
+
+          jq --argjson entry "$PR_ENTRY" \
+            '.prs = ([.prs[] | select(.number != $entry.number)] + [$entry])' \
+            "$PENDING" > tmp.json && mv tmp.json "$PENDING"
+
+          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git commit -m "chore: track PR #${PR_NUMBER} for ${WIDGETS}" || echo "Nothing to commit"
+          git push origin main
+
+  # ── Job 2: Sync review status on PR review ────────────────────────
+  sync-review:
+    if: github.event_name == 'pull_request_review' && startsWith(github.event.pull_request.head.ref, 'widget/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine review status
+        id: review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REVIEW_STATE="${{ github.event.review.state }}"
+
+          # Ignore comment-only reviews
+          if [ "$REVIEW_STATE" = "commented" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Get latest review from each unique reviewer
+          REVIEWS=$(gh pr view "$PR_NUMBER" --json latestReviews --jq '.latestReviews')
+          APPROVED=$(echo "$REVIEWS" | jq '[.[] | select(.state == "APPROVED")] | length')
+          CHANGES_REQ=$(echo "$REVIEWS" | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          TOTAL=$(echo "$REVIEWS" | jq 'length')
+
+          # If any reviewer still has outstanding change requests, don't mark as approved
+          if [ "$CHANGES_REQ" -gt 0 ]; then
+            STATUS="changes_requested"
+          elif [ "$APPROVED" -gt 0 ]; then
+            STATUS="approved"
+          else
+            STATUS="in_review"
+          fi
+
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "approvals=$APPROVED" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "Review status: $STATUS ($APPROVED/$TOTAL approved)"
+
+      - name: Update tracking on main
+        if: steps.review.outputs.skip != 'true'
+        run: |
+          git pull origin main
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          STATUS="${{ steps.review.outputs.status }}"
+          APPROVALS="${{ steps.review.outputs.approvals }}"
+          TOTAL="${{ steps.review.outputs.total }}"
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          PENDING=".widget-control/pending-prs.json"
+
+          # Read widget slugs from existing PR tracking entry
+          WIDGETS=$(jq -r --argjson num "$PR_NUMBER" \
+            '(.prs[] | select(.number == $num) | .widgets) // [] | join(",")' "$PENDING")
+
+          if [ -z "$WIDGETS" ]; then
+            echo "No tracked widgets for PR #$PR_NUMBER"
+            exit 0
+          fi
+
+          IFS=',' read -ra SLUGS <<< "$WIDGETS"
+
+          # Update widget manifests
+          for slug in "${SLUGS[@]}"; do
+            MANIFEST="widgets/${slug}/manifest.json"
+            if [ -f "$MANIFEST" ]; then
+              if [ "$STATUS" = "approved" ]; then
+                jq --arg status "$STATUS" --arg now "$NOW" \
+                   '.control.status = $status | .control.approved_at = $now' \
+                   "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+              else
+                jq --arg status "$STATUS" \
+                   '.control.status = $status' \
+                   "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+              fi
+            fi
+          done
+
+          # Update PR entry in pending-prs.json
+          jq --argjson num "$PR_NUMBER" \
+             --arg status "$STATUS" \
+             --argjson approvals "${APPROVALS:-0}" \
+             --argjson total "${TOTAL:-0}" \
+             --arg now "$NOW" \
+             '(.prs[] | select(.number == $num)) |= (.status = $status | .approvals = $approvals | .total_reviewers = $total | .updated_at = $now)' \
+             "$PENDING" > tmp.json && mv tmp.json "$PENDING"
+
+          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git commit -m "chore: sync review → ${STATUS} for PR #${PR_NUMBER}" || echo "Nothing to commit"
+          git push origin main
+
+  # ── Job 3: Handle PR close (merged or closed) ─────────────────────
+  handle-close:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && startsWith(github.event.pull_request.head.ref, 'widget/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Update tracking on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git pull origin main
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          if [ "$MERGED" = "true" ]; then
+            STATUS="merged"
+          else
+            STATUS="closed"
+          fi
+
+          PENDING=".widget-control/pending-prs.json"
+
+          # Read widget slugs from PR tracking entry
+          WIDGETS=$(jq -r --argjson num "$PR_NUMBER" \
+            '(.prs[] | select(.number == $num) | .widgets) // [] | join(",")' "$PENDING")
+
+          if [ -n "$WIDGETS" ]; then
+            IFS=',' read -ra SLUGS <<< "$WIDGETS"
+
+            for slug in "${SLUGS[@]}"; do
+              MANIFEST="widgets/${slug}/manifest.json"
+              if [ -f "$MANIFEST" ]; then
+                jq --arg status "$STATUS" \
+                   '.control.status = $status' \
+                   "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+              fi
+            done
+          fi
+
+          # Update PR entry in pending-prs.json
+          jq --argjson num "$PR_NUMBER" \
+             --arg status "$STATUS" \
+             --arg now "$NOW" \
+             '(.prs[] | select(.number == $num)) |= (.status = $status | .updated_at = $now)' \
+             "$PENDING" > tmp.json && mv tmp.json "$PENDING"
+
+          git add widgets/*/manifest.json .widget-control/pending-prs.json
+          git commit -m "chore: PR #${PR_NUMBER} ${STATUS}" || echo "Nothing to commit"
+          git push origin main
+
+      - name: Delete merged branch
+        if: github.event.pull_request.merged == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/${BRANCH}" || true
