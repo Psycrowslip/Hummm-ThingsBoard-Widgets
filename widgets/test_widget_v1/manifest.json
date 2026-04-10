@@ -13,13 +13,13 @@
     "is_system": false
   },
   "control": {
-    "status": "merged",
+    "status": "imported",
     "last_pushed_at": "2026-04-10T12:45:24.071Z",
     "last_pushed_commit": "97e56e0b7d138e2fd010f1ca7577596438eb47ce",
     "pr_number": 3,
     "pr_url": "https://github.com/Psycrowslip/Hummm-ThingsBoard-Widgets/pull/3",
     "approved_at": null,
-    "imported_at": null,
-    "thingsboard_id": "fbdb3c80-34da-11f1-8705-fb92ba748f8e"
+    "imported_at": "2026-04-10T12:46:28.116Z",
+    "thingsboard_id": "4a765ff0-34db-11f1-8705-fb92ba748f8e"
   }
 }
