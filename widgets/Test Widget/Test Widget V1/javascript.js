@@ -1,6 +1,6 @@
 self.onInit = function() {
     self.ctx.$scope.timeSeriesChartWidget.onInit();
-    hello;
+    hello world;
 };
 
 self.onDataUpdated = function() {
