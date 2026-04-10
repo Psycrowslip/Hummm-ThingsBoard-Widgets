@@ -7,18 +7,18 @@
   "description": "",
   "author": "",
   "created_at": "2026-04-10T13:04:53.979Z",
-  "updated_at": "2026-04-10T13:06:59Z",
+  "updated_at": "2026-04-10T13:14:55.664Z",
   "thingsboard": {
     "widget_type": "latest",
     "bundle_alias": "",
     "is_system": false
   },
   "control": {
-    "status": "imported",
-    "last_pushed_at": "2026-04-10T13:06:50.134Z",
-    "last_pushed_commit": "f079015a5697630dc7f8d0ed0fd462f262a2dfd8",
-    "pr_number": 5,
-    "pr_url": "https://github.com/Psycrowslip/Hummm-ThingsBoard-Widgets/pull/5",
+    "status": "pushed",
+    "last_pushed_at": "2026-04-10T13:15:05.073Z",
+    "last_pushed_commit": "06bf3f314ff57e5cb39ab7cdd640f4c223c4a9d7",
+    "pr_number": null,
+    "pr_url": null,
     "approved_at": null,
     "imported_at": "2026-04-10T13:07:40.090Z",
     "thingsboard_id": "fbdb3c80-34da-11f1-8705-fb92ba748f8e"
