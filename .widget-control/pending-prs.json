@@ -98,11 +98,11 @@
       "widgets": [
         "Demo Widget/Demo Widget V1"
       ],
-      "status": "in_review",
+      "status": "merged",
       "approvals": 0,
       "total_reviewers": 0,
       "created_at": "2026-04-13T08:19:04Z",
-      "updated_at": "2026-04-13T08:19:04Z"
+      "updated_at": "2026-04-13T08:19:42Z"
     }
   ]
 }
