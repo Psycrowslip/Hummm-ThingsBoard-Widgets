@@ -1,0 +1,26 @@
+{
+  "name": "Admin Dashboard V1.11",
+  "slug": "admin_dashboard_v1_11",
+  "baseName": "Admin Dashboard",
+  "widgetPath": "Admin Dashboard/Admin Dashboard V1.11",
+  "fqn": "admin_dashboard_v1_11",
+  "description": "",
+  "author": "",
+  "created_at": "2026-04-14T13:58:40.827Z",
+  "updated_at": "2026-04-14T13:58:40.827Z",
+  "thingsboard": {
+    "widget_type": "latest",
+    "bundle_alias": "",
+    "is_system": false
+  },
+  "control": {
+    "status": "pushed",
+    "last_pushed_at": "2026-04-14T13:58:51.207Z",
+    "last_pushed_commit": "0a5befbbe9b92d1e034ca73791a976c277883319",
+    "pr_number": null,
+    "pr_url": null,
+    "approved_at": null,
+    "imported_at": null,
+    "thingsboard_id": "2986e0f0-1c51-11f1-8a7f-ff78ec3da2a6"
+  }
+}
