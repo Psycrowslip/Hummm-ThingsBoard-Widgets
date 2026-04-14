@@ -14,9 +14,9 @@
     "is_system": false
   },
   "control": {
-    "status": "in_review",
-    "last_pushed_at": "2026-04-14T13:58:51.207Z",
-    "last_pushed_commit": "0a5befbbe9b92d1e034ca73791a976c277883319",
+    "status": "pushed",
+    "last_pushed_at": "2026-04-14T14:04:32.653Z",
+    "last_pushed_commit": "932691a2ebcc6cc46073e531779c6149c33da713",
     "pr_number": 10,
     "pr_url": "https://github.com/Psycrowslip/Hummm-ThingsBoard-Widgets/pull/10",
     "approved_at": null,
